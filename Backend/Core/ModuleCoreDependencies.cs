@@ -6,6 +6,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using System.Reflection.Metadata;
 
 namespace Core;
 
@@ -19,6 +20,18 @@ public static class ModuleCoreDependencies
         services.AddAutoMapper(Assembly.GetExecutingAssembly());
         // Get Validators
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+        services.AddControllers()
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                options.InvalidModelStateResponseFactory = c =>
+                {
+                    var errors = string.Join('\n', c.ModelState.Values.Where(v => v.Errors.Count > 0)
+                      .SelectMany(v => v.Errors)
+                      .Select(v => v.ErrorMessage));
+
+                    throw new ValidationException(errors);
+                };
+            });
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         //Configuration Of Services
         services.AddTransient<IAuthenticationService, AuthenticationService>();
